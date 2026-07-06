@@ -1,0 +1,62 @@
+# Copy to: https://github.com/<your-org>/shiftleft-automated
+# Save as: .github/workflows/scan-image.yaml
+
+name: Upwind Shift Left Scanning
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        required: true
+        description: Image name to be scanned
+        type: string
+      repo:
+        description: Name of the original repository
+        type: string
+      run_id:
+        description: Run ID of the originating job
+        type: number
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        description: Image name to be scanned
+        type: string
+      repo:
+        required: true
+        description: Name of the original repository
+        type: string
+      run_id:
+        required: true
+        description: Run ID of the originating job
+        type: number
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+  pull-requests: write
+
+jobs:
+  scan:
+    name: Remote Scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_READ_TOKEN }}
+
+      - name: Pull the image
+        run: docker pull ${{ inputs.image_name }}
+
+      - name: Upwind Security ShiftLeft Scan
+        uses: upwindsecurity/shiftleft-create-image-scan-event-action@main
+        continue-on-error: true
+        with:
+          upwind_client_id: ${{ secrets.UPWIND_CLIENT_ID }}
+          upwind_client_secret: ${{ secrets.UPWIND_CLIENT_SECRET }}
+          docker_image: ${{ inputs.image_name }}
+          pull_image: false
